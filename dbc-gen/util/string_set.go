@@ -1,3 +1,5 @@
+// Copyright (C) 2021 Toitware ApS. All rights reserved.
+
 package util
 
 type StringSet map[string]struct{}
