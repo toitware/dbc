@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/toitware/dbc.git/dbc-gen/util"
+	"github.com/toitware/dbc/dbc-gen/util"
 )
 
 var (

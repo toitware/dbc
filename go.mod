@@ -1,4 +1,4 @@
-module github.com/toitware/dbc.git
+module github.com/toitware/dbc
 
 go 1.16
 

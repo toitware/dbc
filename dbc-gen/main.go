@@ -8,7 +8,7 @@ import (
 
 	"go.einride.tech/can/pkg/dbc"
 
-	"github.com/toitware/dbc.git/dbc-gen/toit"
+	"github.com/toitware/dbc/dbc-gen/toit"
 )
 
 func main() {
