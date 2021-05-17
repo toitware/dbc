@@ -2,49 +2,73 @@ package main
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
-	"log"
+	"os"
 	"strconv"
 
 	"go.einride.tech/can/pkg/dbc"
 
+	"github.com/spf13/cobra"
 	"github.com/toitware/dbc/dbc-gen/toit"
 )
 
 func main() {
-	file := "robin.dbc"
-
-	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		log.Fatal(err)
+	cmd := &cobra.Command{
+		Use:   "dbc-gen",
+		Short: "generate toit stubs from DBC files",
+		RunE:  genStubs,
 	}
+	cmd.Flags().StringP("output", "o", "-", "output file for the generate code. Default to '-', stdout.")
 
-	p := dbc.NewParser(file, data)
+	if err := cmd.Execute(); err != nil {
+		os.Exit(1)
+	}
+}
 
-	if err := p.Parse(); err != nil {
-		log.Fatal(err)
+func genStubs(cmd *cobra.Command, args []string) error {
+	output, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return err
 	}
 
 	var msgs []*dbc.MessageDef
-	for _, d := range p.File().Defs {
-		switch def := d.(type) {
-		case *dbc.MessageDef:
-			msgs = append(msgs, def)
+
+	for _, file := range args {
+		data, err := ioutil.ReadFile(file)
+		if err != nil {
+			return err
+		}
+
+		p := dbc.NewParser(file, data)
+
+		if err := p.Parse(); err != nil {
+			return err
+		}
+
+		for _, d := range p.File().Defs {
+			switch def := d.(type) {
+			case *dbc.MessageDef:
+				msgs = append(msgs, def)
+			}
 		}
 	}
 
-	var output bytes.Buffer
-	w := toit.NewWriter(&output)
-	w.ImportAs(".dbc", "dbc")
+	var buffer bytes.Buffer
+	w := toit.NewWriter(&buffer)
+	w.Import("dbc")
 
 	for _, msg := range msgs {
 		if err := processMessage(msg, w); err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
 
-	if err := ioutil.WriteFile("out.toit", output.Bytes(), 0644); err != nil {
-		log.Fatal(err)
+	if output == "-" {
+		_, err := io.Copy(os.Stdout, &buffer)
+		return err
+	} else {
+		return ioutil.WriteFile("out.toit", buffer.Bytes(), 0644)
 	}
 }
 
@@ -72,7 +96,7 @@ func processMessage(msg *dbc.MessageDef, w *toit.Writer) error {
 	w.EndFunction()
 
 	w.StartFunctionDecl("decode")
-	w.Parameter("reader", "dbc.BitReader")
+	w.Parameter("reader", "dbc.Reader")
 	w.EndFunctionDecl(string(msg.Name))
 
 	w.Variable("message", string(msg.Name), string(msg.Name))
