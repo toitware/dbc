@@ -49,3 +49,17 @@ to_physical raw/int factor/num offset/num min_value/num max_value/num -> num:
   value := raw * factor + offset
   if min_value == max_value: return value
   return min max_value (max min_value value)
+
+
+reverse_bits num/int:
+  print num
+  rev := 0
+
+  bits := 4
+
+  for i := 0; i < bits; i++:
+    rev = (rev << 1) | (num & 0x01);
+    num >>= 1
+
+  print rev
+  return rev

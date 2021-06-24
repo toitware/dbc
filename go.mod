@@ -12,3 +12,5 @@ require (
 	github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77 // indirect
 	go.einride.tech/can v0.2.0 // indirect
 )
+
+replace go.einride.tech/can => github.com/andersjohnsen/can-go v0.2.3-0.20210624082344-4727a3b81d51

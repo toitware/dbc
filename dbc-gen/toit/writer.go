@@ -153,8 +153,9 @@ func (w *Writer) Literal(s string) error {
 }
 
 func (w *Writer) StartBlock(newLined bool, parameters ...string) error {
+	defer w.incIdent()
+
 	if newLined {
-		defer w.incIdent()
 		if err := w.EndLine(); err != nil {
 			return err
 		}
@@ -175,9 +176,8 @@ func (w *Writer) StartBlock(newLined bool, parameters ...string) error {
 }
 
 func (w *Writer) EndBlock(newLined bool) error {
-	if newLined {
-		defer w.decIdent()
-	}
+	defer w.decIdent()
+
 	return w.EndLine()
 }
 
