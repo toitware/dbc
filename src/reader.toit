@@ -45,7 +45,7 @@ class Reader:
 /**
 Converts the raw value to the physical values, as describes by the parameters.
 */
-to_physical raw/int factor/num offset/num min_value/num max_value/num -> num:
+to_physical raw/num factor/num offset/num min_value/num max_value/num -> num:
   value := raw * factor + offset
   if min_value == max_value: return value
   return min max_value (max min_value value)

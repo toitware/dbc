@@ -257,7 +257,7 @@ func startBit(s dbc.SignalDef) int {
 }
 
 func processSignal(w *toit.Writer, msg *dbc.MessageDef, s dbc.SignalDef) {
-	w.Variable(signalName(s.Name), "", "0")
+	w.Variable(signalName(s.Name), "num", "0")
 	w.StartAssignment(signalName(s.Name))
 	w.StartCall(" reader.read")
 	w.Argument(strconv.Itoa(startBit(s)))
@@ -268,7 +268,7 @@ func processSignal(w *toit.Writer, msg *dbc.MessageDef, s dbc.SignalDef) {
 	w.EndAssignment()
 	w.EndCall()
 	// Check if it requires to be converted.
-	if s.Maximum != float64(int(1)<<(s.Size-1)) && s.Minimum == 0 && s.Factor == 1 && s.Pos.Offset == 0 {
+	if s.Maximum != float64(int(1)<<(s.Size-1)) || s.Minimum != 0 || s.Factor != 1 || s.Pos.Offset != 0 {
 		w.StartAssignment(signalName(s.Name))
 		w.StartCall(" dbc.to_physical")
 		w.Argument(signalName(s.Name))
