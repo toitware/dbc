@@ -76,7 +76,7 @@ func genStubs(cmd *cobra.Command, args []string) error {
 		_, err := io.Copy(os.Stdout, &buffer)
 		return err
 	} else {
-		return ioutil.WriteFile("out.toit", buffer.Bytes(), 0644)
+		return ioutil.WriteFile(output, buffer.Bytes(), 0644)
 	}
 }
 
