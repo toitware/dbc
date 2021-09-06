@@ -150,6 +150,8 @@ func processMessage(msg *dbc.MessageDef, extMultiplexers []*dbc.SignalMultiplexV
 
 	processDecodeMessage(message, multiplexerSwitch, baseSignals, nil, "", w)
 
+	w.EndFunction()
+
 	w.EndClass()
 
 	return nil
@@ -163,7 +165,7 @@ func processMultiplexMessage(msg *Message, signal dbc.SignalDef, signals []dbc.I
 
 	w.StartClass(newName, baseName)
 
-	w.StaticConst("ID", "int", strconv.FormatUint(uint64(msg.Message.MessageID), 10))
+	w.StaticConst("ID", "int", strconv.FormatUint(uint64(msg.Message.MessageID.ToCAN()), 10))
 	w.NewLine()
 
 	for _, s := range signals {
@@ -177,22 +179,24 @@ func processMultiplexMessage(msg *Message, signal dbc.SignalDef, signals []dbc.I
 	w.EndConstructorDecl()
 	w.EndConstructor()
 
-	w.StartConstructorDecl("")
+	if len(baseSignals)+len(signals) > 0 {
+		w.StartConstructorDecl("")
 
-	for _, s := range baseSignals {
-		w.Parameter(signalName(s), "")
-	}
+		for _, s := range baseSignals {
+			w.Parameter(signalName(s), "")
+		}
 
-	for _, s := range signals {
-		w.Parameter("."+signalName(s), "")
+		for _, s := range signals {
+			w.Parameter("."+signalName(s), "")
+		}
+		w.EndConstructorDecl()
+		w.StartCall("super")
+		for _, s := range baseSignals {
+			w.Argument(signalName(s))
+		}
+		w.EndCall()
+		w.EndConstructor()
 	}
-	w.EndConstructorDecl()
-	w.StartCall("super")
-	for _, s := range baseSignals {
-		w.Argument(signalName(s))
-	}
-	w.EndCall()
-	w.EndConstructor()
 
 	w.EndClass()
 	w.NewLine()
@@ -237,7 +241,7 @@ func processDecodeMessage(msg *Message, signal dbc.SignalDef, signals []dbc.Iden
 		w.ReturnStart()
 		w.Argument("message")
 		w.ReturnEnd()
-	} else if signal.IsMultiplexed {
+	} else {
 		w.Variable("message", name, name+args)
 		w.ReturnStart()
 		w.Argument("message")
