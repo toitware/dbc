@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 
 	// TODO: Once https://github.com/einride/can-go/pull/42 is in, use 'einride/can-go' again and remove 'toitware/can-go'
 	"github.com/toitware/can-go/pkg/dbc"
@@ -38,6 +39,7 @@ func genStubs(cmd *cobra.Command, args []string) error {
 
 	var msgs []*dbc.MessageDef
 	multiplexerValues := map[dbc.MessageID][]*dbc.SignalMultiplexValueDef{}
+	valueDescriptions := []*dbc.ValueDescriptionsDef{}
 
 	for _, file := range args {
 		data, err := ioutil.ReadFile(file)
@@ -59,6 +61,8 @@ func genStubs(cmd *cobra.Command, args []string) error {
 				list := multiplexerValues[def.MessageID]
 				list = append(list, def)
 				multiplexerValues[def.MessageID] = list
+			case *dbc.ValueDescriptionsDef:
+				valueDescriptions = append(valueDescriptions, def)
 			}
 		}
 	}
@@ -69,6 +73,12 @@ func genStubs(cmd *cobra.Command, args []string) error {
 
 	for _, msg := range msgs {
 		if err := processMessage(msg, multiplexerValues[msg.MessageID], w); err != nil {
+			return err
+		}
+	}
+
+	for _, valueDescription := range valueDescriptions {
+		if err := processValueDescription(w, valueDescription); err != nil {
 			return err
 		}
 	}
@@ -285,6 +295,16 @@ func processSignal(w *toit.Writer, msg *dbc.MessageDef, s dbc.SignalDef) {
 		w.EndAssignment()
 		w.NewLine()
 	}
+}
+
+func processValueDescription(w *toit.Writer, valueDescription *dbc.ValueDescriptionsDef) error {
+	w.NewLine()
+	prefix := toit.ToSnakeCase(signalName(valueDescription.SignalName))
+	for _, value := range valueDescription.ValueDescriptions {
+		name := strings.ToUpper(prefix + "_" + toit.ToSnakeCase(value.Description))
+		w.Const(name, "num", strconv.FormatFloat(value.Value, 'g', -1, 64))
+	}
+	return nil
 }
 
 func signalName(name dbc.Identifier) string {
