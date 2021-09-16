@@ -39,7 +39,7 @@ func genStubs(cmd *cobra.Command, args []string) error {
 
 	var msgs []*dbc.MessageDef
 	multiplexerValues := map[dbc.MessageID][]*dbc.SignalMultiplexValueDef{}
-	valueDescriptions := []*dbc.ValueDescriptionsDef{}
+	valueDescriptions := map[dbc.MessageID][]*dbc.ValueDescriptionsDef{}
 
 	for _, file := range args {
 		data, err := ioutil.ReadFile(file)
@@ -62,7 +62,9 @@ func genStubs(cmd *cobra.Command, args []string) error {
 				list = append(list, def)
 				multiplexerValues[def.MessageID] = list
 			case *dbc.ValueDescriptionsDef:
-				valueDescriptions = append(valueDescriptions, def)
+				list := valueDescriptions[def.MessageID]
+				list = append(list, def)
+				valueDescriptions[def.MessageID] = list
 			}
 		}
 	}
@@ -72,13 +74,7 @@ func genStubs(cmd *cobra.Command, args []string) error {
 	w.Import("dbc")
 
 	for _, msg := range msgs {
-		if err := processMessage(msg, multiplexerValues[msg.MessageID], w); err != nil {
-			return err
-		}
-	}
-
-	for _, valueDescription := range valueDescriptions {
-		if err := processValueDescription(w, valueDescription); err != nil {
+		if err := processMessage(msg, multiplexerValues[msg.MessageID], valueDescriptions[msg.MessageID], w); err != nil {
 			return err
 		}
 	}
@@ -103,7 +99,7 @@ type Message struct {
 	MultiplexSignals     map[dbc.Identifier]*Multiplex
 }
 
-func processMessage(msg *dbc.MessageDef, extMultiplexers []*dbc.SignalMultiplexValueDef, w *toit.Writer) error {
+func processMessage(msg *dbc.MessageDef, extMultiplexers []*dbc.SignalMultiplexValueDef, valueDescriptions []*dbc.ValueDescriptionsDef, w *toit.Writer) error {
 	message := &Message{
 		Message:              msg,
 		ExtendedMultiplexers: extMultiplexers,
@@ -144,7 +140,7 @@ func processMessage(msg *dbc.MessageDef, extMultiplexers []*dbc.SignalMultiplexV
 		}
 	}
 
-	processMultiplexMessage(message, multiplexerSwitch, baseSignals, nil, "", w)
+	processMultiplexMessage(message, multiplexerSwitch, baseSignals, nil, "", valueDescriptions, w)
 
 	w.StartClass(string(msg.Name)+"Decoder", "", "dbc.Decoder")
 
@@ -168,7 +164,7 @@ func processMessage(msg *dbc.MessageDef, extMultiplexers []*dbc.SignalMultiplexV
 	return nil
 }
 
-func processMultiplexMessage(msg *Message, signal dbc.SignalDef, signals []dbc.Identifier, baseSignals []dbc.Identifier, baseName string, w *toit.Writer) {
+func processMultiplexMessage(msg *Message, signal dbc.SignalDef, signals []dbc.Identifier, baseSignals []dbc.Identifier, baseName string, valueDescriptions []*dbc.ValueDescriptionsDef, w *toit.Writer) {
 	newName := string(msg.Message.Name)
 	if baseName != "" {
 		newName = baseName + "_" + string(signal.Name)
@@ -178,6 +174,10 @@ func processMultiplexMessage(msg *Message, signal dbc.SignalDef, signals []dbc.I
 
 	w.StaticConst("ID", "int", strconv.FormatUint(uint64(msg.Message.MessageID.ToCAN()), 10))
 	w.NewLine()
+
+	for _, valueDescription := range valueDescriptions {
+		processValueDescription(w, valueDescription)
+	}
 
 	for _, s := range signals {
 		w.Variable(signalName(s), "num", "0")
@@ -214,7 +214,7 @@ func processMultiplexMessage(msg *Message, signal dbc.SignalDef, signals []dbc.I
 
 	if signal.IsMultiplexerSwitch {
 		for _, s := range msg.MultiplexedBy[signal.Name] {
-			processMultiplexMessage(msg, msg.SignalsByName[s], []dbc.Identifier{s}, append(baseSignals, signals...), newName, w)
+			processMultiplexMessage(msg, msg.SignalsByName[s], []dbc.Identifier{s}, append(baseSignals, signals...), newName, nil, w)
 		}
 	}
 }
@@ -297,14 +297,14 @@ func processSignal(w *toit.Writer, msg *dbc.MessageDef, s dbc.SignalDef) {
 	}
 }
 
-func processValueDescription(w *toit.Writer, valueDescription *dbc.ValueDescriptionsDef) error {
-	w.NewLine()
+func processValueDescription(w *toit.Writer, valueDescription *dbc.ValueDescriptionsDef) {
+	w.EndLine()
 	prefix := toit.ToSnakeCase(signalName(valueDescription.SignalName))
 	for _, value := range valueDescription.ValueDescriptions {
 		name := strings.ToUpper(prefix + "_" + toit.ToSnakeCase(value.Description))
-		w.Const(name, "num", strconv.FormatFloat(value.Value, 'g', -1, 64))
+		w.StaticConst(name, "num", strconv.FormatFloat(value.Value, 'g', -1, 64))
 	}
-	return nil
+	w.NewLine()
 }
 
 func signalName(name dbc.Identifier) string {
