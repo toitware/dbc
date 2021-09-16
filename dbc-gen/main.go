@@ -10,7 +10,8 @@ import (
 	"os"
 	"strconv"
 
-	"go.einride.tech/can/pkg/dbc"
+	// TODO: Once https://github.com/einride/can-go/pull/42 is in, use 'einride/can-go' again and remove 'toitware/can-go'
+	"github.com/toitware/can-go/pkg/dbc"
 
 	"github.com/spf13/cobra"
 	"github.com/toitware/dbc/dbc-gen/toit"
